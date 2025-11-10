@@ -17,6 +17,7 @@ use App\Http\Controllers\PenjualanController;
 Route::middleware(['auth', 'role:1,2'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('barang', BarangController::class);
+    Route::put('/barang/{id}/toggle-status', [BarangController::class, 'toggleStatus'])->name('barang.toggleStatus');
     Route::get('/barang/{id}/harga', [BarangController::class, 'getHarga']);
     Route::resource('vendor', VendorController::class)->except(['edit', 'update', 'show']);
     Route::prefix('pengadaan')->middleware(['auth', 'role:1,2'])->group(function () {

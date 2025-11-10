@@ -10,15 +10,23 @@ use Illuminate\Support\Facades\DB;
 
 class BarangController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $barang = Barang::with(['jenisBarang', 'satuan'])->get();
-        $satuan = Satuan::where('status', 1)->get();
-        $jenis = JenisBarang::all();
+        $status = $request->get('status', 'aktif');
+        $filterJenis = $request->get('jenis', 'all');
 
-        return view('barang.index', compact('barang', 'satuan', 'jenis'));
+        $barang = DB::select("CALL sp_get_master_barang(?, ?)", [$status, $filterJenis]);
+        $jenisBarang = DB::table('jenis_barang')->get();
+        $satuan = DB::table('satuan')->get();
+
+        return view('barang.index', [
+            'barang' => $barang,
+            'status' => $status,
+            'filterJenis' => $filterJenis,
+            'jenisBarang' => $jenisBarang,
+            'satuan' => $satuan
+        ]);
     }
-
 
     public function store(Request $request)
     {
@@ -67,5 +75,14 @@ class BarangController extends Controller
     {
         $barang = Barang::find($id);
         return response()->json(['harga' => $barang ? $barang->harga : 0]);
+    }
+
+    public function toggleStatus($id)
+    {
+        $barang = Barang::findOrFail($id);
+        $barang->status = $barang->status == 1 ? 0 : 1;
+        $barang->save();
+
+        return redirect()->route('barang.index')->with('success', 'Status barang berhasil diperbarui!');
     }
 }

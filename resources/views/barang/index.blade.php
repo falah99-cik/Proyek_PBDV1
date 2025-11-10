@@ -16,6 +16,32 @@
         + Tambah Barang
     </button>
 
+    {{-- Filter status & jenis --}}
+    <div class="flex gap-3 mt-4">
+        <form method="GET" action="{{ route('barang.index') }}" class="flex gap-2 items-center">
+            <label for="status" class="text-sm font-medium">Status:</label>
+            <select name="status" id="status" class="border rounded px-2 py-1 text-sm">
+                <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>Semua</option>
+                <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
+            </select>
+
+            <label for="jenis" class="text-sm font-medium">Jenis Barang:</label>
+            <select name="jenis" id="jenis" class="border rounded px-2 py-1 text-sm">
+                <option value="all" {{ request('jenis') == 'all' ? 'selected' : '' }}>Semua Jenis</option>
+                @foreach($jenisBarang as $j)
+    <option value="{{ $j->idjenis }}" {{ request('jenis') == $j->idjenis ? 'selected' : '' }}>
+        {{ $j->nama_jenis }}
+    </option>
+@endforeach
+
+            </select>
+
+            <button type="submit" class="bg-gray-700 hover:bg-gray-800 text-white text-sm px-3 py-1 rounded">
+                Tampilkan
+            </button>
+        </form>
+    </div>
+
     {{-- Tabel Barang --}}
     <div class="bg-white shadow rounded-lg p-4 overflow-x-auto">
         <table class="table-auto w-full text-sm border-collapse">
@@ -30,16 +56,24 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($barang as $index => $b)
+                @forelse($barang as $index => $b)
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-2">{{ $index + 1 }}</td>
-                    <td class="p-2">{{ $b->nama }}</td>
-                    <td class="p-2 text-center">{{ $b->jenisBarang?->nama_jenis ?? '-' }}</td>
-                    <td class="p-2 text-center">{{ $b->satuan?->nama_satuan ?? '-' }}</td>
+                    <td class="p-2">{{ $b->nama_barang ?? $b->nama }}</td>
+                    <td class="p-2 text-center">{{ $b->nama_jenis ?? '-' }}</td>
+                    <td class="p-2 text-center">{{ $b->nama_satuan ?? '-' }}</td>
                     <td class="p-2 text-center">
-                        <span class="px-2 py-1 rounded text-xs {{ $b->status == 1 ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500' }}">
-                            {{ $b->status == 1 ? 'Aktif' : 'Nonaktif' }}
-                        </span>
+                        <form action="{{ route('barang.toggleStatus', $b->idbarang) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit"
+                                class="px-2 py-1 rounded text-xs font-semibold transition
+                                    {{ $b->status == 1 
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                                {{ $b->status == 1 ? 'Aktif' : 'Nonaktif' }}
+                            </button>
+                        </form>
                     </td>
                     <td class="p-2 text-center space-x-2">
                         <button 
@@ -58,7 +92,11 @@
                         </form>
                     </td>
                 </tr>
-                @endforeach
+                @empty
+                <tr>
+                    <td colspan="6" class="p-3 text-center text-gray-500">Tidak ada data barang.</td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
@@ -78,9 +116,11 @@
                         <label class="block text-sm font-medium">Jenis Barang</label>
                         <select name="idjenis" id="idjenis" class="w-full border rounded px-2 py-1" required>
                             <option value="">-- Pilih Jenis --</option>
-                            @foreach($jenis as $j)
-                                <option value="{{ $j->idjenis }}">{{ $j->nama_jenis }}</option>
-                            @endforeach
+                            @foreach($jenisBarang as $j)
+    <option value="{{ $j->idjenis }}" {{ request('jenis') == $j->idjenis ? 'selected' : '' }}>
+        {{ $j->nama_jenis }}
+    </option>
+@endforeach
                         </select>
                     </div>
                     <div>
@@ -106,24 +146,22 @@ function toggleModal(show) {
     const modal = document.getElementById('barangModal');
     modal.classList.toggle('hidden', !show);
 
-    // Reset form jika modal ditutup
     if (!show) {
         const form = document.getElementById('barangForm');
         form.reset();
         document.getElementById('modalTitle').innerText = 'Tambah Barang';
         form.action = "{{ route('barang.store') }}";
-        form.querySelector('input[name="_method"]')?.remove();
+        form.querySelector('input[name=\"_method\"]')?.remove();
     }
 }
 
 function editBarang(data) {
     toggleModal(true);
     document.getElementById('modalTitle').innerText = 'Edit Barang';
-
     const form = document.getElementById('barangForm');
     form.action = `/barang/${data.idbarang}`;
-    if (!form.querySelector('input[name="_method"]')) {
-        form.insertAdjacentHTML('beforeend', '<input type="hidden" name="_method" value="PUT">');
+    if (!form.querySelector('input[name=\"_method\"]')) {
+        form.insertAdjacentHTML('beforeend', '<input type=\"hidden\" name=\"_method\" value=\"PUT\">');
     }
 
     document.getElementById('nama').value = data.nama;
