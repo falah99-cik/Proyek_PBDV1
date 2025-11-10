@@ -19,6 +19,12 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
     Route::resource('barang', BarangController::class);
     Route::put('/barang/{id}/toggle-status', [BarangController::class, 'toggleStatus'])->name('barang.toggleStatus');
     Route::get('/barang/{id}/harga', [BarangController::class, 'getHarga']);
+    Route::get('/margin_penjualan', [MarginPenjualanController::class, 'index'])->name('margin_penjualan.index');
+    Route::post('/margin_penjualan', [MarginPenjualanController::class, 'store'])->name('margin_penjualan.store');
+    Route::put('/margin_penjualan/{id}', [MarginPenjualanController::class, 'update'])->name('margin_penjualan.update');
+    Route::delete('/margin_penjualan/{id}', [MarginPenjualanController::class, 'destroy'])->name('margin_penjualan.destroy');
+    Route::get('/margin_penjualan/{id}/activate', [MarginPenjualanController::class, 'activate'])->name('margin_penjualan.activate');
+    Route::put('/margin_penjualan/{id}/toggle', [MarginPenjualanController::class, 'toggle'])->name('margin_penjualan.toggle');
     Route::resource('vendor', VendorController::class)->except(['edit', 'update', 'show']);
     Route::prefix('pengadaan')->middleware(['auth', 'role:1,2'])->group(function () {
         Route::get('/', [PengadaanController::class, 'index'])->name('pengadaan.index');

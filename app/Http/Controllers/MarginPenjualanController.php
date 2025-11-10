@@ -8,24 +8,30 @@ use Illuminate\Support\Facades\DB;
 
 class MarginPenjualanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $margin = DB::table('v_master_margin_penjualan')
-            ->orderBy('idmargin_penjualan', 'asc')
-            ->get();
+        $status = $request->get('status', 'all'); // default tampil semua
 
-        return view('margin_penjualan.index', compact('margin'));
+        $query = DB::table('margin_penjualan')->select('*');
+
+        // Filter status jika dipilih "aktif"
+        if ($status === 'aktif') {
+            $query->where('status', 1);
+        }
+
+        $margin = $query->orderBy('persen', 'asc')->get();
+
+        return view('margin_penjualan.index', compact('margin', 'status'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'persen_margin' => 'required|numeric|min:0|max:100',
-            'status' => 'nullable|boolean',
+            'persen' => 'required|numeric|min:0|max:100',
         ]);
 
         MarginPenjualan::create([
-            'persen_margin' => $request->persen_margin,
+            'persen' => $request->persen,
             'status' => 1
         ]);
 
@@ -35,6 +41,7 @@ class MarginPenjualanController extends Controller
     public function update(Request $request, $id)
     {
         $margin = MarginPenjualan::findOrFail($id);
+
         $margin->update([
             'persen_margin' => $request->persen_margin,
             'status' => $request->status ?? 1
@@ -46,6 +53,7 @@ class MarginPenjualanController extends Controller
     public function destroy($id)
     {
         MarginPenjualan::findOrFail($id)->delete();
+
         return redirect()->route('margin_penjualan.index')->with('success', 'Margin berhasil dihapus.');
     }
 
@@ -55,6 +63,13 @@ class MarginPenjualanController extends Controller
         DB::statement('CALL sp_set_margin_aktif(?)', [$id]);
 
         return redirect()->route('margin_penjualan.index')
-            ->with('success', 'Margin Persen ' . $margin->persen_margin . ' telah diaktifkan!');
+            ->with('success', 'Margin ' . $margin->persen_margin . '% telah diaktifkan!');
+    }
+
+    public function toggle($id)
+    {
+        DB::statement('CALL sp_toggle_margin_penjualan(?)', [$id]);
+        return redirect()->route('margin_penjualan.index')
+            ->with('success', 'Status margin berhasil diperbarui!');
     }
 }
