@@ -51,6 +51,7 @@
                     <th class="p-2 text-left">Nama Barang</th>
                     <th class="p-2 text-center">Jenis Barang</th>
                     <th class="p-2 text-center">Satuan</th>
+                    <th class="p-2 text-center">Harga</th> {{-- ✅ kolom harga baru --}}
                     <th class="p-2 text-center">Status</th>
                     <th class="p-2 text-center">Aksi</th>
                 </tr>
@@ -62,6 +63,9 @@
                     <td class="p-2">{{ $b->nama_barang ?? '-' }}</td>
                     <td class="p-2 text-center">{{ $b->jenis_barang ?? '-' }}</td>
                     <td class="p-2 text-center">{{ $b->nama_satuan ?? '-' }}</td>
+                    <td class="p-2 text-center font-semibold text-gray-700">
+                        Rp{{ number_format($b->harga ?? 0, 0, ',', '.') }}
+                    </td>
                     <td class="p-2 text-center">
                         <form action="{{ route('barang.toggleStatus', $b->idbarang) }}" method="POST" class="inline">
                             @csrf
@@ -94,7 +98,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="p-3 text-center text-gray-500">Tidak ada data barang.</td>
+                    <td colspan="7" class="p-3 text-center text-gray-500">Tidak ada data barang.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -129,6 +133,10 @@
                             @endforeach
                         </select>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium">Harga</label>
+                        <input type="number" name="harga" id="harga" min="0" class="w-full border rounded px-2 py-1" required>
+                    </div>
                 </div>
                 <div class="flex justify-end mt-4 space-x-2">
                     <button type="button" onclick="toggleModal(false)" class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded">Batal</button>
@@ -144,8 +152,8 @@ function toggleModal(show) {
     const modal = document.getElementById('barangModal');
     modal.classList.toggle('hidden', !show);
 
+    const form = document.getElementById('barangForm');
     if (!show) {
-        const form = document.getElementById('barangForm');
         form.reset();
         document.getElementById('modalTitle').innerText = 'Tambah Barang';
         form.action = "{{ route('barang.store') }}";
@@ -163,9 +171,9 @@ function editBarang(data) {
     }
 
     document.getElementById('nama').value = data.nama_barang ?? data.nama ?? '';
-    // idjenis & idsatuan tidak tersedia di view, jadi dikosongkan
-    document.getElementById('idjenis').value = '';
-    document.getElementById('idsatuan').value = '';
+    document.getElementById('idjenis').value = data.idjenis ?? '';
+    document.getElementById('idsatuan').value = data.idsatuan ?? '';
+    document.getElementById('harga').value = data.harga ?? 0;
 }
 </script>
 @endsection

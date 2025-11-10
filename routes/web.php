@@ -37,6 +37,8 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::put('/{id}', [PengadaanController::class, 'update'])->name('pengadaan.update');
         Route::post('/{id}/cancel', [PengadaanController::class, 'cancel'])->name('pengadaan.cancel');
         Route::delete('/{id}', [PengadaanController::class, 'destroy'])->name('pengadaan.destroy');
+        Route::get('/barang/{idbarang}/harga', [PengadaanController::class, 'getHargaBarang'])
+            ->name('pengadaan.getHargaBarang');
     });
 
     Route::prefix('penerimaan')->group(function () {

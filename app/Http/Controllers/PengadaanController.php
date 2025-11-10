@@ -158,4 +158,34 @@ class PengadaanController extends Controller
 
         return view('pengadaan.create', compact('vendor', 'barang'));
     }
+
+    public function getHargaBarang($idbarang)
+    {
+        try {
+            // Ambil harga dari tabel barang
+            $barang = DB::table('v_harga_otomatis_barang')->where('idbarang', $idbarang)->first();
+
+            // Jika belum ada harga, ambil dari detail_pengadaan terakhir
+            if ($barang && ($barang->harga == 0 || $barang->harga === null)) {
+                $hargaTerakhir = DB::table('detail_pengadaan')
+                    ->where('idbarang', $idbarang)
+                    ->orderByDesc('iddetail_pengadaan')
+                    ->value('harga_satuan');
+
+                $barang->harga = $hargaTerakhir ?? 0;
+            }
+
+            return response()->json([
+                'success' => true,
+                'idbarang' => $barang->idbarang ?? null,
+                'nama' => $barang->nama ?? '-',
+                'harga' => $barang->harga ?? 0,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil harga barang: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

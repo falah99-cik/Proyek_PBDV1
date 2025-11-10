@@ -43,7 +43,12 @@
                     @endforeach
                 </select>
                 <input type="number" name="items[0][jumlah]" class="border p-2 rounded jumlah" placeholder="Jumlah" min="1" required>
-                <input type="number" name="items[0][harga]" class="border p-2 rounded harga" placeholder="Harga Satuan" min="1" required>
+                <td class="p-2 text-center">
+    <input type="number" name="harga_satuan[]" 
+           class="harga_satuan w-full border rounded px-2 py-1 text-center bg-gray-100"
+           readonly>
+</td>
+
                 <input type="text" class="border p-2 rounded bg-gray-100 total-item" placeholder="Subtotal" readonly>
                 <button type="button" class="hapusBarang bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">X</button>
             </div>
@@ -161,5 +166,40 @@ document.getElementById('formPengadaan').addEventListener('submit', function(e) 
         }
     }
 });
+
+function getHarga(select) {
+    const idbarang = select.value;
+    const row = select.closest('tr');
+    const hargaInput = row.querySelector('.harga_satuan');
+    const jumlahInput = row.querySelector('.jumlah');
+    const subtotalInput = row.querySelector('.subtotal');
+
+    if (!idbarang) {
+        hargaInput.value = 0;
+        subtotalInput.value = 0;
+        return;
+    }
+
+    fetch(`/pengadaan/barang/${idbarang}/harga`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                hargaInput.value = data.harga;
+                subtotalInput.value = (parseInt(jumlahInput.value) || 0) * data.harga;
+                hitungTotalPengadaan();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => console.error('Error fetch harga:', err));
+}
+
+function hitungTotalPengadaan() {
+    let total = 0;
+    document.querySelectorAll('.subtotal').forEach(el => {
+        total += parseInt(el.value) || 0;
+    });
+    document.getElementById('totalPengadaan').innerText = 'Rp ' + total.toLocaleString('id-ID');
+}
 </script>
 @endsection
