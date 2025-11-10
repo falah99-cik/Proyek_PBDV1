@@ -21,19 +21,19 @@
         <form method="GET" action="{{ route('barang.index') }}" class="flex gap-2 items-center">
             <label for="status" class="text-sm font-medium">Status:</label>
             <select name="status" id="status" class="border rounded px-2 py-1 text-sm">
-                <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>Semua</option>
+                <option value="semua" {{ request('status') == 'semua' ? 'selected' : '' }}>Semua</option>
                 <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
+                <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
             </select>
 
             <label for="jenis" class="text-sm font-medium">Jenis Barang:</label>
             <select name="jenis" id="jenis" class="border rounded px-2 py-1 text-sm">
-                <option value="all" {{ request('jenis') == 'all' ? 'selected' : '' }}>Semua Jenis</option>
+                <option value="semua" {{ request('jenis') == 'semua' ? 'selected' : '' }}>Semua Jenis</option>
                 @foreach($jenisBarang as $j)
-    <option value="{{ $j->idjenis }}" {{ request('jenis') == $j->idjenis ? 'selected' : '' }}>
-        {{ $j->nama_jenis }}
-    </option>
-@endforeach
-
+                    <option value="{{ $j }}" {{ request('jenis') == $j ? 'selected' : '' }}>
+                        {{ $j }}
+                    </option>
+                @endforeach
             </select>
 
             <button type="submit" class="bg-gray-700 hover:bg-gray-800 text-white text-sm px-3 py-1 rounded">
@@ -59,8 +59,8 @@
                 @forelse($barang as $index => $b)
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-2">{{ $index + 1 }}</td>
-                    <td class="p-2">{{ $b->nama_barang ?? $b->nama }}</td>
-                    <td class="p-2 text-center">{{ $b->nama_jenis ?? '-' }}</td>
+                    <td class="p-2">{{ $b->nama_barang ?? '-' }}</td>
+                    <td class="p-2 text-center">{{ $b->jenis_barang ?? '-' }}</td>
                     <td class="p-2 text-center">{{ $b->nama_satuan ?? '-' }}</td>
                     <td class="p-2 text-center">
                         <form action="{{ route('barang.toggleStatus', $b->idbarang) }}" method="POST" class="inline">
@@ -68,10 +68,10 @@
                             @method('PUT')
                             <button type="submit"
                                 class="px-2 py-1 rounded text-xs font-semibold transition
-                                    {{ $b->status == 1 
+                                    {{ $b->status == 'Aktif' 
                                         ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                         : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
-                                {{ $b->status == 1 ? 'Aktif' : 'Nonaktif' }}
+                                {{ $b->status }}
                             </button>
                         </form>
                     </td>
@@ -114,13 +114,11 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Jenis Barang</label>
-                        <select name="idjenis" id="idjenis" class="w-full border rounded px-2 py-1" required>
+                        <select name="idjenis" id="idjenis" class="w-full border rounded px-2 py-1">
                             <option value="">-- Pilih Jenis --</option>
-                            @foreach($jenisBarang as $j)
-    <option value="{{ $j->idjenis }}" {{ request('jenis') == $j->idjenis ? 'selected' : '' }}>
-        {{ $j->nama_jenis }}
-    </option>
-@endforeach
+                            @foreach(DB::table('jenis_barang')->get() as $j)
+                                <option value="{{ $j->idjenis }}">{{ $j->nama_jenis }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
@@ -164,9 +162,10 @@ function editBarang(data) {
         form.insertAdjacentHTML('beforeend', '<input type=\"hidden\" name=\"_method\" value=\"PUT\">');
     }
 
-    document.getElementById('nama').value = data.nama;
-    document.getElementById('idjenis').value = data.idjenis ?? '';
-    document.getElementById('idsatuan').value = data.idsatuan ?? '';
+    document.getElementById('nama').value = data.nama_barang ?? data.nama ?? '';
+    // idjenis & idsatuan tidak tersedia di view, jadi dikosongkan
+    document.getElementById('idjenis').value = '';
+    document.getElementById('idsatuan').value = '';
 }
 </script>
 @endsection

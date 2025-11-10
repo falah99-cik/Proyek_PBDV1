@@ -9,12 +9,26 @@ use Illuminate\Support\Facades\DB;
 class VendorController extends Controller
 {
     /**
-     * Tampilkan daftar vendor (mengambil dari view v_master_vendor).
+     * Tampilkan daftar vendor (dengan filter status).
+     * Default: hanya vendor aktif yang tampil.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $vendors = DB::table('v_master_vendor')->get();
-        return view('vendor.index', compact('vendors'));
+        $status = $request->get('status', 'aktif'); // default tampil vendor aktif
+
+        // Ambil dari view v_master_vendor agar tampil nama + status
+        $query = DB::table('v_master_vendor');
+
+        if ($status === 'aktif') {
+            $query->where('status', 'Aktif');
+        }
+
+        $vendors = $query->orderBy('nama_vendor', 'asc')->get();
+
+        return view('vendor.index', [
+            'vendors' => $vendors,
+            'status' => $status
+        ]);
     }
 
     /**
@@ -34,6 +48,18 @@ class VendorController extends Controller
         ]);
 
         return redirect()->route('vendor.index')->with('success', 'Vendor baru berhasil ditambahkan.');
+    }
+
+    /**
+     * Ubah status aktif/nonaktif vendor.
+     */
+    public function toggleStatus($id)
+    {
+        $vendor = Vendor::findOrFail($id);
+        $vendor->status = $vendor->status === 'A' ? 'N' : 'A';
+        $vendor->save();
+
+        return redirect()->route('vendor.index')->with('success', 'Status vendor berhasil diperbarui.');
     }
 
     /**

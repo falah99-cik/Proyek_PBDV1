@@ -16,12 +16,26 @@
         + Tambah Vendor
     </button>
 
+    {{-- Filter Status --}}
+    <div class="flex gap-3 mt-4">
+        <form method="GET" action="{{ route('vendor.index') }}" class="flex gap-2 items-center">
+            <label for="status" class="text-sm font-medium">Tampilkan:</label>
+            <select name="status" id="status" class="border rounded px-2 py-1 text-sm">
+                <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>Semua </option>
+                <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif </option>
+            </select>
+            <button type="submit" class="bg-gray-700 hover:bg-gray-800 text-white text-sm px-3 py-1 rounded">
+                Tampilkan
+            </button>
+        </form>
+    </div>
+
     {{-- Tabel Vendor --}}
     <div class="bg-white shadow rounded-lg p-4 overflow-x-auto">
         <table class="table-auto w-full text-sm border-collapse">
             <thead class="bg-gray-100">
                 <tr>
-                    <th class="p-2 text-left">#</th>
+                    <th class="p-2 text-left">No</th>
                     <th class="p-2 text-left">Nama Vendor</th>
                     <th class="p-2 text-center">Badan Hukum</th>
                     <th class="p-2 text-center">Status</th>
@@ -29,17 +43,34 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($vendors as $index => $v)
+                @forelse($vendors as $index => $v)
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-2">{{ $index + 1 }}</td>
                     <td class="p-2">{{ $v->nama_vendor }}</td>
                     <td class="p-2 text-center">
-                        {{ $v->badan_hukum == 'P' ? 'PT' : ($v->badan_hukum == 'C' ? 'CV' : 'Lainnya') }}
+                        @if($v->badan_hukum == 'P')
+                            PT
+                        @elseif($v->badan_hukum == 'C')
+                            CV
+                        @elseif($v->badan_hukum == 'D')
+                            UD / Lainnya
+                        @else
+                            -
+                        @endif
                     </td>
                     <td class="p-2 text-center">
-                        <span class="px-2 py-1 rounded text-xs {{ $v->status == 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500' }}">
-                            {{ $v->status }}
-                        </span>
+                        {{-- Tombol toggle status --}}
+                        <form action="{{ route('vendor.toggleStatus', $v->idvendor) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit"
+                                class="px-2 py-1 rounded text-xs font-semibold transition
+                                    {{ $v->status == 'Aktif'
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300' }}">
+                                {{ $v->status }}
+                            </button>
+                        </form>
                     </td>
                     <td class="p-2 text-center space-x-2">
                         {{-- Tombol Edit --}}
@@ -53,19 +84,23 @@
                             @csrf
                             @method('DELETE')
                             <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
-                                    onclick="return confirm('Hapus vendor ini?')">
+                                onclick="return confirm('Hapus vendor ini?')">
                                 Hapus
                             </button>
                         </form>
                     </td>
                 </tr>
-                @endforeach
+                @empty
+                <tr>
+                    <td colspan="5" class="p-3 text-center text-gray-500">Tidak ada data vendor.</td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 
     {{-- Modal Tambah/Edit Vendor --}}
-    <div id="vendorModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
+    <div id="vendorModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg w-1/3 p-6">
             <h2 id="modalTitle" class="text-lg font-semibold mb-4">Tambah Vendor</h2>
             <form id="vendorForm" method="POST" action="{{ route('vendor.store') }}">
@@ -95,16 +130,30 @@
 
 <script>
 function toggleModal(show) {
-    document.getElementById('vendorModal').classList.toggle('hidden', !show);
-    if (!show) document.getElementById('vendorForm').reset();
+    const modal = document.getElementById('vendorModal');
+    modal.classList.toggle('hidden', !show);
+
+    const form = document.getElementById('vendorForm');
+    const methodInput = form.querySelector('input[name="_method"]');
+
+    if (!show) {
+        form.reset();
+        document.getElementById('modalTitle').innerText = 'Tambah Vendor';
+        form.action = "{{ route('vendor.store') }}";
+        if (methodInput) methodInput.remove(); // hapus _method PUT saat menutup
+    }
 }
 
 function editVendor(data) {
     toggleModal(true);
     document.getElementById('modalTitle').innerText = 'Edit Vendor';
+
     const form = document.getElementById('vendorForm');
     form.action = `/vendor/${data.idvendor}`;
-    form.insertAdjacentHTML('beforeend', '<input type="hidden" name="_method" value="PUT">');
+    if (!form.querySelector('input[name="_method"]')) {
+        form.insertAdjacentHTML('beforeend', '<input type="hidden" name="_method" value="PUT">');
+    }
+
     document.getElementById('nama_vendor').value = data.nama_vendor;
     document.getElementById('badan_hukum').value = data.badan_hukum;
 }
