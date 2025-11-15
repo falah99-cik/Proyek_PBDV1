@@ -53,6 +53,8 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::get('/{id}', [PenerimaanController::class, 'show'])->name('penerimaan.show');
         Route::get('/pengadaan/{id}/barang', [PenerimaanController::class, 'getBarangByPengadaan'])
             ->name('penerimaan.getBarangByPengadaan');
+        Route::post('/{id}/add-detail', [PenerimaanController::class, 'addDetail'])
+            ->name('penerimaan.addDetail');
     });
 
     Route::resource('satuan', SatuanController::class);
