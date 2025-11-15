@@ -28,6 +28,12 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
     Route::put('/vendor/{id}/toggle-status', [VendorController::class, 'toggleStatus'])
         ->name('vendor.toggleStatus');
 
+    Route::get(
+        '/pengadaan/get-harga/{idbarang}',
+        [PengadaanController::class, 'getHargaBarang']
+    )
+        ->name('pengadaan.getHarga');
+
     Route::prefix('pengadaan')->group(function () {
         Route::get('/', [PengadaanController::class, 'index'])->name('pengadaan.index');
         Route::get('/create', [PengadaanController::class, 'create'])->name('pengadaan.create');
@@ -37,8 +43,6 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::put('/{id}', [PengadaanController::class, 'update'])->name('pengadaan.update');
         Route::post('/{id}/cancel', [PengadaanController::class, 'cancel'])->name('pengadaan.cancel');
         Route::delete('/{id}', [PengadaanController::class, 'destroy'])->name('pengadaan.destroy');
-        Route::get('/barang/{idbarang}/harga', [PengadaanController::class, 'getHargaBarang'])
-            ->name('pengadaan.getHargaBarang');
     });
 
     Route::prefix('penerimaan')->group(function () {

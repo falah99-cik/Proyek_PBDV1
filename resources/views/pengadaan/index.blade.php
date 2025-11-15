@@ -51,13 +51,19 @@
                     <td class="p-2">Rp {{ number_format($p->total_nilai, 0, ',', '.') }}</td>
                     <td class="p-2">Rp {{ number_format($p->ppn, 0, ',', '.') }}</td>
                     <td class="p-2">
-  @if($p->status == 'S')
+@if($p->status == 'S')
     <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Selesai</span>
-  @elseif($p->status == 'P')
+
+@elseif($p->status == 'P')
     <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Sedang Diproses</span>
-  @elseif($p->status == 'B')
+
+@elseif($p->status == 'B')
     <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">Batal</span>
-  @endif
+
+@else
+    <span class="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs">Tidak Diketahui</span>
+@endif
+
 </td>
                     <td class="p-2 text-center space-x-1">
                         <a href="{{ route('pengadaan.show', $p->idpengadaan) }}" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">Detail</a>

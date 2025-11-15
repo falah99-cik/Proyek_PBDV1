@@ -4,21 +4,21 @@
 
 @section('content')
 <div class="bg-white p-6 rounded shadow">
-    <h2 class="text-lg font-semibold mb-4">Detail Pengadaan #{{ $pengadaan->idpengadaan }}</h2>
+    <h2 class="text-lg font-semibold mb-4">Detail Pengadaan #{{ $header->idpengadaan }}</h2>
 
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
-            <p><strong>Vendor:</strong> {{ $pengadaan->nama_vendor }}</p>
-            <p><strong>Tanggal:</strong> {{ \Carbon\Carbon::parse($pengadaan->timestamp)->format('d-m-Y H:i') }}</p>
+            <p><strong>Vendor:</strong> {{ $header->nama_vendor }}</p>
+            <p><strong>Tanggal:</strong> {{ \Carbon\Carbon::parse($header->timestamp)->format('d-m-Y H:i') }}</p>
         </div>
         <div>
             <p><strong>Status:</strong>
-                @if($pengadaan->status == 'S')
+                @if($header->status == 'S')
                     <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Selesai</span>
-                @elseif($pengadaan->status == 'B')
+                @elseif($header->status == 'B')
                     <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">Batal</span>
                 @else
-                    <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Pending</span>
+                    <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Sedang Diproses</span>
                 @endif
             </p>
         </div>
@@ -49,9 +49,9 @@
     </table>
 
     <div class="text-right mt-4">
-        <p><strong>Subtotal:</strong> Rp {{ number_format($pengadaan->subtotal_nilai, 0, ',', '.') }}</p>
-        <p><strong>PPN:</strong> Rp {{ number_format($pengadaan->ppn, 0, ',', '.') }}</p>
-        <p><strong>Total:</strong> Rp {{ number_format($pengadaan->total_nilai, 0, ',', '.') }}</p>
+        <p><strong>Subtotal:</strong> Rp {{ number_format($header->subtotal_nilai, 0, ',', '.') }}</p>
+        <p><strong>PPN:</strong> Rp {{ number_format($header->ppn, 0, ',', '.') }}</p>
+        <p><strong>Total:</strong> Rp {{ number_format($header->total_nilai, 0, ',', '.') }}</p>
     </div>
 
     <div class="mt-4">
