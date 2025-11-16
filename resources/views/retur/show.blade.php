@@ -3,154 +3,146 @@
 @section('title', 'Detail Retur')
 
 @section('content')
-<div class="max-w-5xl mx-auto bg-white shadow rounded-lg p-6 space-y-6">
-    
+<div class="space-y-6">
     {{-- Header --}}
-    <div class="flex justify-between items-center border-b pb-4">
+    <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">
-                Detail Retur #{{ $header->idretur }}
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">
-                Dibuat oleh: {{ $header->user_retur }} | 
-                {{ \Carbon\Carbon::parse($header->created_at)->format('d M Y, H:i') }}
-            </p>
-        </div>
-        <div class="flex gap-2">
-            <a href="{{ route('retur.index') }}" 
-               class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">
-               ← Kembali
+            <a href="{{ route('retur.index') }}" class="text-indigo-600 hover:text-indigo-800 font-medium mb-2 inline-block">
+                ← Kembali ke Daftar Retur
             </a>
-            
-            {{-- Form Update Status --}}
-            @if($header->status != 'S')
-            <form action="{{ route('retur.updateStatus', $header->idretur) }}" method="POST" class="inline">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="status" value="S">
-                <button type="submit" 
-                        onclick="return confirm('Tandai retur ini sebagai selesai?')"
-                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition">
-                    ✓ Tandai Selesai
-                </button>
-            </form>
-            @endif
-        </div>
-    </div>
-
-    {{-- Info Vendor & Status --}}
-    <div class="grid grid-cols-2 gap-6">
-        <div class="space-y-2">
-            <div class="flex items-center gap-2">
-                <span class="text-gray-600 font-medium">Vendor:</span>
-                <span class="text-lg font-semibold">{{ $header->nama_vendor ?? '-' }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="text-gray-600 font-medium">Status:</span>
-                @if($header->status == 'S')
-                    <span class="px-3 py-1 rounded text-sm font-semibold bg-green-100 text-green-700">
-                        ✓ Selesai
-                    </span>
-                @elseif($header->status == 'P')
-                    <span class="px-3 py-1 rounded text-sm font-semibold bg-yellow-100 text-yellow-700">
-                        ⏳ Dalam Proses
-                    </span>
+            <h1 class="text-2xl font-bold">
+                @if($retur->jenis_retur == 'penerimaan')
+                    🔴 Detail Retur ke Vendor
                 @else
-                    <span class="px-3 py-1 rounded text-sm font-semibold bg-gray-200 text-gray-700">
-                        ⚠️ Belum Diproses
-                    </span>
+                    🔵 Detail Retur dari Customer
                 @endif
-            </div>
+            </h1>
         </div>
-
-        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-            <p class="text-sm text-yellow-800">
-                <strong>⚠️ Catatan:</strong> Retur tidak mengurangi stok sistem. 
-                Barang yang diretur hanya dicatat untuk klaim ke vendor.
-            </p>
-        </div>
-    </div>
-
-    {{-- Detail Barang --}}
-    <div>
-        <h2 class="text-lg font-semibold text-gray-800 mb-3">Daftar Barang yang Diretur</h2>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm border border-gray-300 rounded-lg overflow-hidden">
-                <thead class="bg-red-600 text-white">
-                    <tr>
-                        <th class="p-3 text-left">No</th>
-                        <th class="p-3 text-left">Nama Barang</th>
-                        <th class="p-3 text-center">Jumlah Diretur</th>
-                        <th class="p-3 text-center">Dari Penerimaan</th>
-                        <th class="p-3 text-center">Harga Satuan</th>
-                        <th class="p-3 text-left">Alasan Retur</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $totalNilai = 0; @endphp
-                    @foreach($retur as $index => $item)
-                        @php 
-                            $subtotal = $item->jumlah_retur * ($item->harga_satuan_terima ?? 0);
-                            $totalNilai += $subtotal;
-                        @endphp
-                        <tr class="{{ $index % 2 == 0 ? 'bg-gray-50' : 'bg-white' }} hover:bg-red-50 transition">
-                            <td class="p-3 border-b border-gray-200">{{ $index + 1 }}</td>
-                            <td class="p-3 border-b border-gray-200 font-medium">
-                                {{ $item->nama_barang }}
-                            </td>
-                            <td class="p-3 border-b border-gray-200 text-center font-bold text-red-700">
-                                {{ $item->jumlah_retur }} unit
-                            </td>
-                            <td class="p-3 border-b border-gray-200 text-center text-gray-600">
-                                {{ $item->jumlah_diterima_awal ?? '-' }} unit
-                            </td>
-                            <td class="p-3 border-b border-gray-200 text-center">
-                                Rp {{ number_format($item->harga_satuan_terima ?? 0, 0, ',', '.') }}
-                            </td>
-                            <td class="p-3 border-b border-gray-200">
-                                <span class="text-sm text-gray-700">{{ $item->alasan }}</span>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot class="bg-red-100 font-semibold text-gray-800">
-                    <tr>
-                        <td colspan="2" class="p-3 text-right border-t-2 border-red-300">
-                            Total Nilai Retur:
-                        </td>
-                        <td colspan="4" class="p-3 text-left border-t-2 border-red-300 text-red-700">
-                            Rp {{ number_format($totalNilai, 0, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-
-    {{-- Aksi Tambahan --}}
-    <div class="flex justify-between items-center border-t pt-4">
-        <div class="text-sm text-gray-600">
-            <p><strong>Informasi:</strong></p>
-            <ul class="list-disc ml-5 mt-1">
-                <li>Barang yang diretur akan diklaim penggantian kepada vendor</li>
-                <li>Stok sistem tetap tidak berubah sampai vendor mengirim penggantian</li>
-                <li>Jika vendor sudah kirim penggantian, buat Penerimaan baru</li>
-            </ul>
-        </div>
-
-        {{-- Tombol Delete (opsional, hanya untuk admin) --}}
-        @if(Auth::user()->idrole == 1 && $header->status == 'N')
-        <form action="{{ route('retur.destroy', $header->idretur) }}" method="POST" 
-              onsubmit="return confirm('⚠️ Yakin ingin menghapus retur ini? Data tidak bisa dikembalikan!')">
+        
+        @if($retur->status == 'N')
+        <form action="{{ route('retur.updateStatus', $retur->idretur) }}" method="POST">
             @csrf
-            @method('DELETE')
+            @method('PUT')
+            <input type="hidden" name="status" value="Y">
             <button type="submit" 
-                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">
-                🗑️ Hapus Retur
+                    onclick="return confirm('Approve retur ini?')"
+                    class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition font-semibold shadow-lg">
+                ✓ Approve Retur
             </button>
         </form>
         @endif
     </div>
 
+    {{-- Info Retur --}}
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4">
+            <h2 class="text-xl font-semibold text-white">📋 Informasi Retur</h2>
+        </div>
+        <div class="p-6 grid md:grid-cols-2 gap-6">
+            <div>
+                <label class="text-sm font-semibold text-gray-600">ID Retur</label>
+                <p class="text-lg font-bold text-gray-800">#{{ $retur->idretur }}</p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Tanggal Retur</label>
+                <p class="text-lg text-gray-800">{{ \Carbon\Carbon::parse($retur->created_at)->format('d/m/Y H:i') }}</p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Jenis Retur</label>
+                <p class="text-lg">
+                    @if($retur->jenis_retur == 'penerimaan')
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">
+                            🔴 Ke Vendor
+                        </span>
+                    @else
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-700">
+                            🔵 Dari Customer
+                        </span>
+                    @endif
+                </p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Status</label>
+                <p class="text-lg">
+                    @if($retur->status == 'Y')
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                            ✓ Approved
+                        </span>
+                    @elseif($retur->status == 'N')
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
+                            ⏳ Pending
+                        </span>
+                    @else
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-200 text-gray-700">
+                            ❌ Rejected
+                        </span>
+                    @endif
+                </p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Referensi Transaksi</label>
+                <p class="text-lg text-gray-800">
+                    @if($retur->jenis_retur == 'penerimaan')
+                        Penerimaan #{{ $retur->idpenerimaan ?? '-' }}
+                    @else
+                        Penjualan #{{ $retur->idpenjualan ?? '-' }}
+                    @endif
+                </p>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Dibuat Oleh</label>
+                <p class="text-lg text-gray-800">{{ $retur->username ?? $retur->nama_user ?? 'User tidak tersedia' }}</p>
+            </div>
+            @if($retur->jenis_retur == 'penerimaan')
+            <div class="md:col-span-2">
+                <label class="text-sm font-semibold text-gray-600">Vendor</label>
+                <p class="text-lg text-gray-800">{{ $retur->nama_vendor ?? 'Vendor tidak tersedia' }}</p>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Detail Barang --}}
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4">
+            <h2 class="text-xl font-semibold text-white">📦 Detail Barang Retur</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table-auto w-full text-sm">
+                <thead class="bg-gray-50 border-b-2 border-gray-200">
+                    <tr>
+                        <th class="p-3 text-left font-semibold text-gray-700">No</th>
+                        <th class="p-3 text-left font-semibold text-gray-700">Nama Barang</th>
+                        <th class="p-3 text-center font-semibold text-gray-700">Jumlah</th>
+                        <th class="p-3 text-center font-semibold text-gray-700">Satuan</th>
+                        <th class="p-3 text-left font-semibold text-gray-700">Alasan Retur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($details as $index => $detail)
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="p-3 text-gray-700">{{ $index + 1 }}</td>
+                        <td class="p-3">
+                            <span class="font-semibold text-gray-800">{{ $detail->nama_barang }}</span>
+                        </td>
+                        <td class="p-3 text-center">
+                            <span class="font-bold text-gray-800">{{ $detail->jumlah }}</span>
+                        </td>
+                        <td class="p-3 text-center text-gray-700">{{ $detail->nama_satuan }}</td>
+                        <td class="p-3">
+                            <span class="text-gray-700">{{ $detail->alasan ?? '-' }}</span>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-gray-500">
+                            <p class="font-medium">Tidak ada detail barang</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 @endsection
