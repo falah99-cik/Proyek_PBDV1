@@ -15,25 +15,26 @@ use App\Http\Controllers\JenisBarangController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ReturController;
 
+Route::get('/', function () {
+    return redirect('/dashboard');
+});
+
 Route::middleware(['auth', 'role:1,2'])->group(function () {
 
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Barang
     Route::resource('barang', BarangController::class);
-    Route::put('/barang/{id}/toggle-status', [BarangController::class, 'toggleStatus'])
-        ->name('barang.toggleStatus');
-    Route::get('/barang/{id}/harga', [BarangController::class, 'getHarga'])
-        ->name('barang.getHarga');
+    Route::put('/barang/{id}/toggle-status', [BarangController::class, 'toggleStatus'])->name('barang.toggleStatus');
+    Route::get('/barang/{id}/harga', [BarangController::class, 'getHarga'])->name('barang.getHarga');
 
+    // Vendor
     Route::resource('vendor', VendorController::class)->except(['edit', 'show']);
-    Route::put('/vendor/{id}/toggle-status', [VendorController::class, 'toggleStatus'])
-        ->name('vendor.toggleStatus');
+    Route::put('/vendor/{id}/toggle-status', [VendorController::class, 'toggleStatus'])->name('vendor.toggleStatus');
 
-    Route::get(
-        '/pengadaan/get-harga/{idbarang}',
-        [PengadaanController::class, 'getHargaBarang']
-    )
-        ->name('pengadaan.getHarga');
+    // Pengadaan
+    Route::get('/pengadaan/get-harga/{idbarang}', [PengadaanController::class, 'getHargaBarang'])->name('pengadaan.getHarga');
 
     Route::prefix('pengadaan')->group(function () {
         Route::get('/', [PengadaanController::class, 'index'])->name('pengadaan.index');
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::delete('/{id}', [PengadaanController::class, 'destroy'])->name('pengadaan.destroy');
     });
 
+    // Penerimaan
     Route::prefix('penerimaan')->group(function () {
         Route::get('/', [PenerimaanController::class, 'index'])->name('penerimaan.index');
         Route::get('/create', [PenerimaanController::class, 'create'])->name('penerimaan.create');
@@ -53,27 +55,35 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::get('/{id}', [PenerimaanController::class, 'show'])->name('penerimaan.show');
         Route::get('/pengadaan/{id}/barang', [PenerimaanController::class, 'getBarangByPengadaan'])
             ->name('penerimaan.getBarangByPengadaan');
-        Route::post('/{id}/add-detail', [PenerimaanController::class, 'addDetail'])
-            ->name('penerimaan.addDetail');
+        Route::post('/{id}/add-detail', [PenerimaanController::class, 'addDetail'])->name('penerimaan.addDetail');
     });
 
+    // Satuan
     Route::resource('satuan', SatuanController::class);
     Route::put('/satuan/{id}/toggle-status', [SatuanController::class, 'toggleStatus'])->name('satuan.toggleStatus');
+
+    // Jenis Barang
     Route::resource('jenis-barang', JenisBarangController::class);
+
+    // Penjualan
     Route::resource('penjualan', PenjualanController::class);
 
+    // Margin Penjualan
     Route::resource('margin_penjualan', MarginPenjualanController::class);
     Route::get('margin_penjualan/{id}/activate', [MarginPenjualanController::class, 'activate'])
         ->name('margin_penjualan.activate');
     Route::put('margin_penjualan/{id}/toggle', [MarginPenjualanController::class, 'toggle'])
         ->name('margin_penjualan.toggle');
 
-    Route::get('/', [ReturController::class, 'index'])->name('retur.index');
-    Route::post('/store', [ReturController::class, 'store'])->name('retur.store');
-    Route::get('/{id}', [ReturController::class, 'show'])->name('retur.show');
-    Route::put('/{id}/status', [ReturController::class, 'updateStatus'])->name('retur.updateStatus');
-    Route::delete('/{id}', [ReturController::class, 'destroy'])->name('retur.destroy');
-    Route::get('/get-items-penerimaan/{id}', [ReturController::class, 'getItemsPenerimaan'])->name('retur.getItemsPenerimaan');
+    Route::prefix('retur')->group(function () {
+        Route::get('/', [ReturController::class, 'index'])->name('retur.index');
+        Route::post('/store', [ReturController::class, 'store'])->name('retur.store');
+        Route::get('/{id}', [ReturController::class, 'show'])->name('retur.show');
+        Route::put('/{id}/status', [ReturController::class, 'updateStatus'])->name('retur.updateStatus');
+        Route::delete('/{id}', [ReturController::class, 'destroy'])->name('retur.destroy');
+        Route::get('/get-items-penerimaan/{id}', [ReturController::class, 'getItemsPenerimaan'])
+            ->name('retur.getItemsPenerimaan');
+    });
 });
 
 Route::middleware(['auth', 'role:1'])->group(function () {
@@ -89,7 +99,6 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/barang/{id}/info', [BarangController::class, 'getInfo']);
 Route::get('/penjualan/{id}/detail', [PenjualanController::class, 'getDetail']);
-
 Route::get('/retur/get-barang-penerimaan/{idpenerimaan}', [ReturController::class, 'getBarangPenerimaan']);
 
 require __DIR__ . '/auth.php';
