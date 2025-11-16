@@ -128,7 +128,7 @@ class ReturController extends Controller
         try {
             DB::beginTransaction();
 
-            // ✅ Ambil data penerimaan untuk mendapatkan jenis_retur
+            // ✅ Validasi penerimaan exists
             $penerimaan = DB::table('penerimaan')
                 ->where('idpenerimaan', $request->idpenerimaan)
                 ->first();
@@ -137,11 +137,9 @@ class ReturController extends Controller
                 return back()->with('error', 'Penerimaan tidak ditemukan');
             }
 
-            // Insert retur dengan jenis_retur = 'penerimaan'
+            // ✅ INSERT RETUR - HANYA kolom yang ADA di database
             $idRetur = DB::table('retur')->insertGetId([
                 'idpenerimaan' => $request->idpenerimaan,
-                'idpenjualan' => null,
-                'jenis_retur' => 'penerimaan', // ✅ Tetapkan jenis retur
                 'iduser' => Auth::id(),
                 'status' => 'N', // Pending
                 'created_at' => now()
@@ -165,14 +163,6 @@ class ReturController extends Controller
                     return back()->with('error', "❌ Stok tidak cukup untuk: {$barang->nama}. Stok tersedia: {$stokAktual}");
                 }
 
-                // ✅ Get stok terakhir dari kartu_stok
-                $stokTerakhir = DB::table('kartu_stok')
-                    ->where('idbarang', $item['idbarang'])
-                    ->orderByDesc('idkartu_stok')
-                    ->value('stock') ?? 0;
-
-                $stokBaru = $stokTerakhir - $item['jumlah'];
-
                 // Insert detail retur
                 DB::table('detail_retur')->insert([
                     'idretur' => $idRetur,
@@ -182,9 +172,8 @@ class ReturController extends Controller
                     'iddetail_penerimaan' => $item['iddetail_penerimaan'] ?? null
                 ]);
 
-                // ✅ PENTING: Kartu stok akan otomatis diupdate oleh trigger
-                // Trigger: trg_after_insert_detail_retur_penerimaan
-                // Jadi kita TIDAK perlu manual insert ke kartu_stok
+                // ✅ Kartu stok akan otomatis diupdate oleh trigger
+                // Trigger: trg_after_insert_detail_retur
             }
 
             DB::commit();
@@ -235,10 +224,7 @@ class ReturController extends Controller
                 'barang.nama as nama_barang',
                 'satuan.nama_satuan',
                 'detail_retur.jumlah',
-                'detail_retur.alasan',
-                'detail_retur.stok_sebelum',
-                'detail_retur.stok_sesudah',
-                'barang.stok as stok_sekarang'
+                'detail_retur.alasan'
             )
             ->get();
 
