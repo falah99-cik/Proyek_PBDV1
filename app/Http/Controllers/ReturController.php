@@ -5,196 +5,227 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; // ✅ Tambahkan ini
 
 class ReturController extends Controller
 {
-    /**
-     * Tampilkan daftar retur
-     */
     public function index()
     {
-        // Ambil data retur lengkap dari view
-        $retur = DB::table('v_retur_lengkap')
-            ->orderByDesc('idretur')
+        // Ambil data retur
+        $retur = DB::table('v_retur_lengkap')->get();
+
+        // ✅ TAMBAHKAN: Ambil data penerimaan untuk dropdown filter (jika ada)
+        $penerimaan = DB::table('penerimaan')
+            ->join('pengadaan', 'penerimaan.idpengadaan', '=', 'pengadaan.idpengadaan')
+            ->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')
+            ->select(
+                'penerimaan.idpenerimaan',
+                'penerimaan.created_at',
+                'vendor.nama_vendor'
+            )
+            ->where('penerimaan.status', 'S')
             ->get();
 
-        // Ambil daftar penerimaan untuk dropdown (retur ke vendor)
-        $penerimaan = DB::table('v_detail_penerimaan_header')
-            ->orderByDesc('idpenerimaan')
-            ->get();
-
-        // ✅ Ambil daftar penjualan untuk dropdown (retur dari customer)
+        // ✅ TAMBAHKAN: Ambil data penjualan untuk dropdown filter (jika ada)
         $penjualan = DB::table('penjualan')
-            ->join('user', 'penjualan.iduser', '=', 'user.iduser')
-            ->select('penjualan.*', 'user.username')
-            ->orderByDesc('idpenjualan')
+            ->select(
+                'idpenjualan',
+                'created_at',
+                'total_nilai'
+            )
             ->get();
 
         return view('retur.index', compact('retur', 'penerimaan', 'penjualan'));
     }
 
-    /**
-     * Simpan retur baru
-     */
+    public function create()
+    {
+        // Ambil data penerimaan yang sudah selesai
+        $penerimaan = DB::table('penerimaan')
+            ->join('pengadaan', 'penerimaan.idpengadaan', '=', 'pengadaan.idpengadaan')
+            ->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')
+            ->select(
+                'penerimaan.idpenerimaan',
+                'penerimaan.created_at',
+                'vendor.nama_vendor',
+                'pengadaan.total_nilai'
+            )
+            ->where('penerimaan.status', 'S')
+            ->get();
+
+        // Ambil data penjualan
+        $penjualan = DB::table('penjualan')
+            ->select(
+                'idpenjualan',
+                'created_at',
+                'total_nilai'
+            )
+            ->get();
+
+        return view('retur.create', compact('penerimaan', 'penjualan'));
+    }
+
+    public function getBarangPenerimaan($idpenerimaan)
+    {
+        $barang = DB::table('detail_penerimaan')
+            ->join('barang', 'detail_penerimaan.idbarang', '=', 'barang.idbarang')
+            ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
+            ->select(
+                'barang.idbarang',
+                'barang.nama as nama_barang',
+                'satuan.nama_satuan',
+                'detail_penerimaan.jumlah_terima',
+                'detail_penerimaan.harga_satuan_terima',
+                'detail_penerimaan.iddetail_penerimaan'
+            )
+            ->where('detail_penerimaan.idpenerimaan', $idpenerimaan)
+            ->get();
+
+        return response()->json($barang);
+    }
+
+    public function getBarangPenjualan($idpenjualan)
+    {
+        $barang = DB::table('detail_penjualan')
+            ->join('barang', 'detail_penjualan.idbarang', '=', 'barang.idbarang')
+            ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
+            ->select(
+                'barang.idbarang',
+                'barang.nama as nama_barang',
+                'satuan.nama_satuan',
+                'detail_penjualan.jumlah',
+                'detail_penjualan.harga_satuan'
+            )
+            ->where('detail_penjualan.idpenjualan', $idpenjualan)
+            ->get();
+
+        return response()->json($barang);
+    }
+
     public function store(Request $request)
     {
-        $request->validate([
-            'jenis_retur' => 'required|in:penerimaan,penjualan', // ✅ Validasi jenis retur
-            'items' => 'required|array|min:1',
-            'items.*.idbarang' => 'required|integer|exists:barang,idbarang',
-            'items.*.jumlah' => 'required|integer|min:1',
-            'items.*.alasan' => 'required|string|max:200',
-            'items.*.iddetail_penerimaan' => 'nullable|integer|exists:detail_penerimaan,iddetail_penerimaan',
-            'items.*.iddetail_penjualan' => 'nullable|integer|exists:detail_penjualan,iddetail_penjualan',
-        ], [
-            'jenis_retur.required' => 'Jenis retur wajib dipilih.',
-            'items.required' => 'Tambahkan minimal 1 item untuk diretur.',
-            'items.*.idbarang.required' => 'ID Barang wajib diisi.',
-            'items.*.idbarang.exists' => 'Barang tidak ditemukan di database.',
-            'items.*.jumlah.required' => 'Jumlah retur wajib diisi.',
-            'items.*.jumlah.min' => 'Jumlah retur minimal 1.',
-            'items.*.alasan.required' => 'Alasan retur wajib diisi.',
-        ]);
-
         try {
             DB::beginTransaction();
 
-            $idUser = Auth::user()->iduser;
             $jenisRetur = $request->jenis_retur;
+            $idReferensi = $request->id_referensi;
+            $idUser = Auth::id(); // ✅ Perbaiki ini dari auth()->user()->id menjadi Auth::id()
 
-            // ✅ Tentukan ID referensi berdasarkan jenis retur
+            // Jika menggunakan tabel user dengan kolom iduser
+            $user = Auth::user();
+            $idUser = $user->iduser; // ✅ Sesuaikan dengan kolom di tabel user
+
+            // ✅ Simpan idpenjualan atau idpenerimaan
+            $dataRetur = [
+                'iduser' => $idUser,
+                'jenis_retur' => $jenisRetur,
+                'status' => 'N',
+                'created_at' => now()
+            ];
+
+            // Tentukan field mana yang diisi berdasarkan jenis retur
             if ($jenisRetur === 'penerimaan') {
-                $idReferensi = $request->idpenerimaan ?? null; // Retur ke vendor
-                $tableName = 'detail_penerimaan';
+                $dataRetur['idpenerimaan'] = $idReferensi;
+                $dataRetur['idpenjualan'] = null;
             } else {
-                $idReferensi = $request->idpenjualan ?? null; // Retur dari customer
-                $tableName = 'detail_penjualan';
+                $dataRetur['idpenjualan'] = $idReferensi;
+                $dataRetur['idpenerimaan'] = null;
             }
 
-            // ✅ Insert ke tabel retur (header)
-            $idRetur = DB::table('retur')->insertGetId([
-                'idpenerimaan' => $jenisRetur === 'penerimaan' ? $idReferensi : null,
-                'iduser' => $idUser,
-                'jenis_retur' => $jenisRetur, // ✅ Simpan jenis retur
-                'status' => 'N', // N = New
-                'created_at' => now()
-            ]);
+            $idRetur = DB::table('retur')->insertGetId($dataRetur);
 
-            // ✅ Insert detail retur
-            foreach ($request->items as $item) {
+            // Simpan detail barang
+            $barangList = json_decode($request->barang_list, true);
 
-                // ✅ Validasi jumlah tidak melebihi yang diterima/dijual
-                if ($idReferensi) {
-                    $jumlahAsli = DB::table($tableName)
-                        ->where($jenisRetur === 'penerimaan' ? 'idpenerimaan' : 'idpenjualan', $idReferensi)
-                        ->where('idbarang', $item['idbarang'])
-                        ->value($jenisRetur === 'penerimaan' ? 'jumlah_terima' : 'jumlah');
+            if (empty($barangList)) {
+                throw new \Exception('Tidak ada barang untuk retur');
+            }
 
-                    if ($item['jumlah'] > $jumlahAsli) {
-                        DB::rollBack();
-                        return back()->with('error', "Jumlah retur melebihi jumlah " .
-                            ($jenisRetur === 'penerimaan' ? 'penerimaan' : 'penjualan') .
-                            " untuk barang ID: {$item['idbarang']}");
-                    }
+            foreach ($barangList as $barang) {
+                $detailData = [
+                    'idretur' => $idRetur,
+                    'idbarang' => $barang['idbarang'],
+                    'jumlah' => $barang['jumlah'],
+                    'alasan' => $barang['alasan'] ?? null,
+                    'created_at' => now()
+                ];
+
+                // Jika retur penerimaan, simpan juga iddetail_penerimaan
+                if ($jenisRetur === 'penerimaan' && isset($barang['iddetail_penerimaan'])) {
+                    $detailData['iddetail_penerimaan'] = $barang['iddetail_penerimaan'];
                 }
 
-                // Insert detail retur
-                DB::table('detail_retur')->insert([
-                    'idretur' => $idRetur,
-                    'idbarang' => $item['idbarang'],
-                    'jumlah' => $item['jumlah'],
-                    'alasan' => $item['alasan'],
-                    'iddetail_penerimaan' => $item['iddetail_penerimaan'] ?? null,
-                    'created_at' => now()
-                ]);
+                DB::table('detail_retur')->insert($detailData);
             }
 
             DB::commit();
 
-            return redirect()->route('retur.index')
-                ->with('success', "Retur #{$idRetur} berhasil disimpan! (Jenis: " .
-                    ($jenisRetur === 'penerimaan' ? 'Retur ke Vendor' : 'Retur dari Customer') . ")");
+            return response()->json([
+                'success' => true,
+                'message' => 'Data retur berhasil disimpan',
+                'idretur' => $idRetur
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Error retur: ' . $e->getMessage()); // ✅ Perbaiki ini
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    /**
-     * Tampilkan detail retur
-     */
     public function show($id)
     {
+        // Detail retur
         $retur = DB::table('v_retur_lengkap')
             ->where('idretur', $id)
+            ->first();
+
+        // Detail barang retur
+        $detailBarang = DB::table('detail_retur')
+            ->join('barang', 'detail_retur.idbarang', '=', 'barang.idbarang')
+            ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
+            ->select(
+                'barang.nama as nama_barang',
+                'satuan.nama_satuan',
+                'detail_retur.jumlah',
+                'detail_retur.alasan'
+            )
+            ->where('detail_retur.idretur', $id)
             ->get();
 
-        if ($retur->isEmpty()) {
-            return redirect()->route('retur.index')
-                ->with('error', 'Data retur tidak ditemukan.');
-        }
-
-        $header = $retur->first();
-
-        return view('retur.show', compact('retur', 'header'));
+        return view('retur.show', compact('retur', 'detailBarang'));
     }
 
-    /**
-     * Update status retur
-     */
-    public function updateStatus(Request $request, $id)
+    public function approve($id)
     {
-        $request->validate([
-            'status' => 'required|in:N,P,S',
-        ]);
-
         try {
+            DB::beginTransaction();
+
+            // Update status retur
             DB::table('retur')
                 ->where('idretur', $id)
-                ->update(['status' => $request->status]);
+                ->update([
+                    'status' => 'Y',
+                    'updated_at' => now()
+                ]);
 
-            return redirect()->route('retur.index')
-                ->with('success', 'Status retur berhasil diperbarui!');
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Retur berhasil diapprove'
+            ]);
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal update status: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Error approve retur: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal approve: ' . $e->getMessage()
+            ], 500);
         }
-    }
-
-    /**
-     * Hapus retur
-     */
-    public function destroy($id)
-    {
-        try {
-            DB::table('detail_retur')->where('idretur', $id)->delete();
-            DB::table('retur')->where('idretur', $id)->delete();
-
-            return redirect()->route('retur.index')
-                ->with('success', 'Retur berhasil dihapus!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus retur: ' . $e->getMessage());
-        }
-    }
-
-    public function getItemsPenerimaan($idpenerimaan)
-    {
-        $items = DB::table('detail_penerimaan')
-            ->join('barang', 'detail_penerimaan.idbarang', '=', 'barang.idbarang')
-            ->where('detail_penerimaan.idpenerimaan', $idpenerimaan)
-            ->select('barang.nama as nama_barang', 'detail_penerimaan.jumlah')
-            ->get();
-
-        return response()->json($items);
-    }
-
-    public function getItemsPenjualan($idpenjualan)
-    {
-        $items = DB::table('detail_penjualan')
-            ->join('barang', 'detail_penjualan.idbarang', '=', 'barang.idbarang')
-            ->where('detail_penjualan.idpenjualan', $idpenjualan)
-            ->select('barang.nama as nama_barang', 'detail_penjualan.jumlah')
-            ->get();
-
-        return response()->json($items);
     }
 }

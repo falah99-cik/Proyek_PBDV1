@@ -91,72 +91,49 @@
                         <th class="p-3 text-center font-semibold text-gray-700">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
-                    @forelse($retur as $r)
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="p-3 font-semibold text-indigo-600">#{{ $r->idretur }}</td>
-                        <td class="p-3 text-center">
-                            @if($r->jenis_retur == 'penerimaan')
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"/>
-                                    </svg>
-                                    Ke Vendor
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z"/>
-                                    </svg>
-                                    Dari Customer
-                                </span>
-                            @endif
-                        </td>
-                        <td class="p-3 text-gray-700">{{ \Carbon\Carbon::parse($r->created_at)->format('d/m/Y H:i') }}</td>
-                        <td class="p-3 text-gray-800">{{ $r->nama_barang }}</td>
-                        <td class="p-3 text-center font-semibold text-gray-900">{{ $r->jumlah }} unit</td>
-                        <td class="p-3 text-sm text-gray-600">{{ $r->alasan }}</td>
-                        <td class="p-3 text-center">
-                            @if($r->status == 'S')
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                    ✓ Selesai
-                                </span>
-                            @elseif($r->status == 'P')
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                                    ⏳ Proses
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
-                                    ○ Baru
-                                </span>
-                            @endif
-                        </td>
-                        <td class="p-3 text-center text-sm text-gray-600">{{ $r->user_retur }}</td>
-                        <td class="p-3 text-center">
-                            <a href="{{ route('retur.show', $r->idretur) }}" 
-                               class="inline-flex items-center bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
-                               <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                               </svg>
-                               Detail
-                            </a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="9" class="p-8 text-center">
-                            <div class="flex flex-col items-center justify-center text-gray-400">
-                                <svg class="w-16 h-16 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                </svg>
-                                <p class="text-lg font-semibold">Belum ada data retur</p>
-                                <p class="text-sm mt-1">Klik tombol "Buat Retur Baru" untuk memulai</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
+                <tbody>
+    @forelse($retur as $r)
+    <tr>
+        <td>{{ $loop->iteration }}</td>
+        <td>{{ date('d/m/Y H:i', strtotime($r->created_at)) }}</td>
+        <td>
+            @if($r->jenis_retur == 'penerimaan')
+                <span class="badge bg-warning">Retur ke Vendor</span>
+                <br><small>ID: {{ $r->idpenerimaan ?? '-' }}</small>
+                <br><small>{{ $r->nama_vendor ?? 'Vendor tidak ditemukan' }}</small>
+            @else
+                <span class="badge bg-info">Retur dari Customer</span>
+                <br><small>ID: {{ $r->idpenjualan ?? '-' }}</small>
+                <br><small>Penjualan #{{ $r->idpenjualan }}</small>
+            @endif
+        </td>
+        <td>{{ $r->username ?? $r->nama_user ?? '-' }}</td> {{-- ✅ PERBAIKAN DI SINI --}}
+        <td>
+            @if($r->status == 'N')
+                <span class="badge bg-secondary">Pending</span>
+            @elseif($r->status == 'Y')
+                <span class="badge bg-success">Approved</span>
+            @else
+                <span class="badge bg-danger">Rejected</span>
+            @endif
+        </td>
+        <td>
+            <button class="btn btn-sm btn-info" onclick="lihatDetail({{ $r->idretur }})">
+                <i class="fas fa-eye"></i> Detail
+            </button>
+            @if($r->status == 'N')
+            <button class="btn btn-sm btn-success" onclick="approve({{ $r->idretur }})">
+                <i class="fas fa-check"></i> Approve
+            </button>
+            @endif
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="6" class="text-center">Belum ada data retur</td>
+    </tr>
+    @endforelse
+</tbody>
             </table>
         </div>
     </div>
@@ -267,7 +244,7 @@
                                 <option value="">-- Pilih transaksi penjualan --</option>
                                 @foreach($penjualan as $pj)
                                     <option value="{{ $pj->idpenjualan }}">
-                                        #{{ $pj->idpenjualan }} - {{ $pj->username }} 
+                                        {{ $pj->idpenjualan }} - {{ $pj->username }} 
                                         ({{ \Carbon\Carbon::parse($pj->created_at)->format('d/m/Y H:i') }})
                                     </option>
                                 @endforeach
@@ -519,11 +496,6 @@ document.getElementById('penjualanSelect').addEventListener('change', function()
                                 </svg>
                             </div>
                             <div class="flex-1 grid md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">ID Barang</label>
-                                    <input type="text" name="items[${index}][idbarang]" value="${item.idbarang}" readonly
-                                           class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50 text-sm font-mono">
-                                </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Nama Barang</label>
                                     <input type="text" value="${item.nama_barang}" readonly
