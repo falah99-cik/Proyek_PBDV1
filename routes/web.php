@@ -81,7 +81,9 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         Route::get('/{id}', [ReturController::class, 'show'])->name('retur.show');
         Route::put('/{id}/status', [ReturController::class, 'updateStatus'])->name('retur.updateStatus');
         Route::delete('/{id}', [ReturController::class, 'destroy'])->name('retur.destroy');
-        Route::get('/get-items-penerimaan/{id}', [ReturController::class, 'getItemsPenerimaan'])
+
+        // ✅ ROUTE UTAMA untuk ambil barang penerimaan
+        Route::get('/get-items-penerimaan/{idpenerimaan}', [ReturController::class, 'getItemsPenerimaan'])
             ->name('retur.getItemsPenerimaan');
     });
 });

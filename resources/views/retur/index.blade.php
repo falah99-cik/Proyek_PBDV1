@@ -249,9 +249,12 @@ function toggleModal(show) {
 }
 
 // Event listener
+// ✅ EVENT LISTENER PERBAIKAN
 document.getElementById('penerimaanSelect').addEventListener('change', async function() {
     const idpenerimaan = this.value;
     const container = document.getElementById('returItems');
+    
+    console.log('📦 Penerimaan dipilih:', idpenerimaan); // Debug
     
     if (!idpenerimaan) {
         container.innerHTML = `
@@ -265,6 +268,7 @@ document.getElementById('penerimaanSelect').addEventListener('change', async fun
         return;
     }
     
+    // Loading state
     container.innerHTML = `
         <div class="flex flex-col items-center justify-center py-8 text-indigo-600">
             <svg class="animate-spin h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24">
@@ -276,12 +280,22 @@ document.getElementById('penerimaanSelect').addEventListener('change', async fun
     `;
     
     try {
-        const response = await fetch(`/retur/get-barang-penerimaan/${idpenerimaan}`);
+        // ✅ URL YANG BENAR sesuai route
+        const url = `/retur/get-items-penerimaan/${idpenerimaan}`;
+        console.log('🔗 Memanggil:', url); // Debug
+        
+        const response = await fetch(url);
+        console.log('📡 Response status:', response.status); // Debug
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ Response error:', errorText); // Debug
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         const result = await response.json();
+        console.log('✅ Data diterima:', result); // Debug
+        
         if (!result.success) {
             throw new Error(result.message || 'Gagal memuat data');
         }
@@ -292,14 +306,17 @@ document.getElementById('penerimaanSelect').addEventListener('change', async fun
             container.innerHTML = `
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
                     <p class="text-yellow-800 font-medium">⚠️ Tidak ada barang yang bisa diretur</p>
-                    <p class="text-yellow-600 text-sm mt-1">Penerimaan ini tidak memiliki barang atau sudah diretur semua</p>
+                    <p class="text-yellow-600 text-sm mt-1">Penerimaan ini tidak memiliki barang atau stok sudah habis</p>
                 </div>
             `;
             return;
         }
         
+        // ✅ RENDER BARANG
         let html = '';
         barang.forEach((item, index) => {
+            const maksRetur = Math.min(item.stok, item.jumlah_terima);
+            
             html += `
                 <div class="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-red-400 transition">
                     <div class="grid grid-cols-12 gap-4 items-center">
@@ -327,11 +344,11 @@ document.getElementById('penerimaanSelect').addEventListener('change', async fun
                             <input type="number" 
                                    name="items[${index}][jumlah]" 
                                    min="1" 
-                                   max="${Math.min(item.stok, item.jumlah_terima)}"
+                                   max="${maksRetur}"
                                    class="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-red-500 focus:ring-2 focus:ring-red-200"
                                    placeholder="Jumlah"
                                    required>
-                            <p class="text-xs text-gray-500 mt-1">Maks: ${Math.min(item.stok, item.jumlah_terima)}</p>
+                            <p class="text-xs text-gray-500 mt-1">Maks: ${maksRetur}</p>
                         </div>
                         
                         <div class="col-span-12 mt-2">
@@ -348,14 +365,29 @@ document.getElementById('penerimaanSelect').addEventListener('change', async fun
         });
         
         container.innerHTML = html;
+        console.log('✨ Rendering selesai!'); // Debug
+        
+        // ✅ Validasi input jumlah
+        document.querySelectorAll('input[type="number"][name^="items"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const max = parseInt(this.getAttribute('max')) || 0;
+                const val = parseInt(this.value) || 0;
+                if (val > max) {
+                    this.value = max;
+                    alert(`Jumlah retur tidak boleh melebihi ${max}.`);
+                }
+            });
+        });
         
     } catch (error) {
+        console.error('💥 Error:', error); // Debug
         container.innerHTML = `
             <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 text-center">
                 <p class="text-red-800 font-bold mb-2">❌ Gagal Memuat Data</p>
-                <p class="text-red-600 text-sm">${error.message}</p>
-                <button onclick="location.reload()" class="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                    Muat Ulang Halaman
+                <p class="text-red-600 text-sm mb-2">${error.message}</p>
+                <button onclick="document.getElementById('penerimaanSelect').dispatchEvent(new Event('change'))" 
+                        class="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                    🔄 Coba Lagi
                 </button>
             </div>
         `;

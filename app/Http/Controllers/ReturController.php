@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReturController extends Controller
 {
@@ -42,28 +43,76 @@ class ReturController extends Controller
         return view('retur.index', compact('retur', 'penerimaan'));
     }
 
+    // ✅ PERBAIKAN: Method untuk mengambil barang dari penerimaan
     public function getItemsPenerimaan($idpenerimaan)
     {
         try {
-            $items = DB::table('detail_penerimaan')
-                ->join('barang', 'detail_penerimaan.idbarang', '=', 'barang.idbarang')
-                ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
-                ->where('detail_penerimaan.idpenerimaan', $idpenerimaan)
+            // Validasi penerimaan exists
+            $penerimaan = DB::table('penerimaan')
+                ->where('idpenerimaan', $idpenerimaan)
+                ->first();
+
+            if (!$penerimaan) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Penerimaan tidak ditemukan'
+                ], 404);
+            }
+
+            // Ambil detail penerimaan dengan info barang lengkap
+            $items = DB::table('detail_penerimaan as dp')
+                ->join('barang as b', 'dp.idbarang', '=', 'b.idbarang')
+                ->join('satuan as s', 'b.idsatuan', '=', 's.idsatuan')
+                ->where('dp.idpenerimaan', $idpenerimaan)
                 ->select(
-                    'detail_penerimaan.iddetail_penerimaan',
-                    'detail_penerimaan.idbarang',
-                    'barang.nama as nama_barang',
-                    'barang.stok',
-                    'satuan.nama_satuan',
-                    'detail_penerimaan.jumlah_terima',
-                    'detail_penerimaan.harga_satuan_terima'
+                    'dp.iddetail_penerimaan',
+                    'dp.idbarang',
+                    'b.nama as nama_barang',
+                    's.nama_satuan',
+                    'dp.jumlah_terima',
+                    'dp.harga_satuan_terima',
+                    // ✅ Hitung stok dari fn_hitung_stok_barang
+                    DB::raw('fn_hitung_stok_barang(b.idbarang) as stok')
                 )
                 ->get();
 
-            return response()->json($items);
+            // ✅ Cek apakah ada item yang bisa diretur
+            if ($items->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada barang dalam penerimaan ini'
+                ], 404);
+            }
+
+            // ✅ Filter hanya item yang stoknya > 0
+            $filteredItems = $items->filter(function ($item) {
+                return $item->stok > 0;
+            });
+
+            if ($filteredItems->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada barang yang bisa diretur (stok habis)'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $filteredItems->values()->all() // Reset array index
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'line' => $e->getLine()
+            ], 500);
         }
+    }
+
+    // ✅ Alias untuk backward compatibility
+    public function getBarangPenerimaan($idpenerimaan)
+    {
+        return $this->getItemsPenerimaan($idpenerimaan);
     }
 
     public function store(Request $request)
@@ -79,25 +128,50 @@ class ReturController extends Controller
         try {
             DB::beginTransaction();
 
-            // Insert retur
+            // ✅ Ambil data penerimaan untuk mendapatkan jenis_retur
+            $penerimaan = DB::table('penerimaan')
+                ->where('idpenerimaan', $request->idpenerimaan)
+                ->first();
+
+            if (!$penerimaan) {
+                return back()->with('error', 'Penerimaan tidak ditemukan');
+            }
+
+            // Insert retur dengan jenis_retur = 'penerimaan'
             $idRetur = DB::table('retur')->insertGetId([
                 'idpenerimaan' => $request->idpenerimaan,
+                'idpenjualan' => null,
+                'jenis_retur' => 'penerimaan', // ✅ Tetapkan jenis retur
                 'iduser' => Auth::id(),
                 'status' => 'N', // Pending
                 'created_at' => now()
             ]);
 
-            // Insert detail dan kurangi stok
+            // Insert detail dan proses stok
             foreach ($request->items as $item) {
-                // Validasi stok
-                $barang = DB::table('barang')->where('idbarang', $item['idbarang'])->first();
+                // ✅ Validasi stok menggunakan kartu_stok
+                $stokData = DB::selectOne("
+                SELECT 
+                    COALESCE(SUM(masuk), 0) - COALESCE(SUM(keluar), 0) as stok_aktual
+                FROM kartu_stok
+                WHERE idbarang = ?
+            ", [$item['idbarang']]);
 
-                if ($barang->stok < $item['jumlah']) {
-                    throw new \Exception("Stok tidak cukup untuk barang: {$barang->nama}");
+                $stokAktual = $stokData ? $stokData->stok_aktual : 0;
+
+                if ($stokAktual < $item['jumlah']) {
+                    DB::rollBack();
+                    $barang = DB::table('barang')->where('idbarang', $item['idbarang'])->first();
+                    return back()->with('error', "❌ Stok tidak cukup untuk: {$barang->nama}. Stok tersedia: {$stokAktual}");
                 }
 
-                $stokSebelum = $barang->stok;
-                $stokSesudah = $stokSebelum - $item['jumlah'];
+                // ✅ Get stok terakhir dari kartu_stok
+                $stokTerakhir = DB::table('kartu_stok')
+                    ->where('idbarang', $item['idbarang'])
+                    ->orderByDesc('idkartu_stok')
+                    ->value('stock') ?? 0;
+
+                $stokBaru = $stokTerakhir - $item['jumlah'];
 
                 // Insert detail retur
                 DB::table('detail_retur')->insert([
@@ -105,35 +179,25 @@ class ReturController extends Controller
                     'idbarang' => $item['idbarang'],
                     'jumlah' => $item['jumlah'],
                     'alasan' => $item['alasan'],
-                    'iddetail_penerimaan' => $item['iddetail_penerimaan'] ?? null,
-                    'stok_sebelum' => $stokSebelum,
-                    'stok_sesudah' => $stokSesudah,
-                    'created_at' => now()
+                    'iddetail_penerimaan' => $item['iddetail_penerimaan'] ?? null
                 ]);
 
-                // Kurangi stok barang
-                DB::table('barang')
-                    ->where('idbarang', $item['idbarang'])
-                    ->decrement('stok', $item['jumlah']);
-
-                // Insert ke kartu stok
-                DB::table('kartu_stok')->insert([
-                    'jenis_transaksi' => 'R', // R = Retur
-                    'masuk' => 0,
-                    'keluar' => $item['jumlah'],
-                    'stock' => $stokSesudah,
-                    'idtransaksi' => $idRetur,
-                    'idbarang' => $item['idbarang'],
-                    'created_at' => now()
-                ]);
+                // ✅ PENTING: Kartu stok akan otomatis diupdate oleh trigger
+                // Trigger: trg_after_insert_detail_retur_penerimaan
+                // Jadi kita TIDAK perlu manual insert ke kartu_stok
             }
 
             DB::commit();
 
             return redirect()->route('retur.index')
-                ->with('success', '✅ Retur berhasil dibuat. Stok telah dikurangi.');
+                ->with('success', '✅ Retur berhasil dibuat. Stok telah dikurangi otomatis.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Retur Store Error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
             return redirect()->back()
                 ->with('error', '❌ Gagal: ' . $e->getMessage())
                 ->withInput();
@@ -257,23 +321,6 @@ class ReturController extends Controller
             DB::rollBack();
             return redirect()->back()
                 ->with('error', '❌ ' . $e->getMessage());
-        }
-    }
-
-    public function getBarangPenerimaan($idpenerimaan)
-    {
-        try {
-            $barang = DB::select('CALL sp_get_barang_untuk_retur(?)', [$idpenerimaan]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $barang
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memuat data barang: ' . $e->getMessage()
-            ], 500);
         }
     }
 }
