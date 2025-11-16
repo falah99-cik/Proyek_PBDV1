@@ -172,7 +172,83 @@ class PenerimaanController extends Controller
         }
     }
 
-    // ✅ Method untuk update status otomatis
+    /**
+     * ✅ Method untuk tambah detail penerimaan pada ID yang sudah ada
+     */
+    public function addDetail(Request $request, $id)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.idbarang' => 'required|integer|exists:barang,idbarang',
+            'items.*.jumlah_terima' => 'required|integer|min:1',
+            'items.*.harga_satuan_terima' => 'required|integer|min:0'
+        ], [
+            'items.required' => 'Minimal 1 item harus ditambahkan',
+            'items.*.idbarang.required' => 'ID Barang wajib diisi',
+            'items.*.jumlah_terima.required' => 'Jumlah terima wajib diisi',
+            'items.*.jumlah_terima.min' => 'Jumlah minimal 1',
+            'items.*.harga_satuan_terima.required' => 'Harga satuan wajib diisi'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Cek apakah penerimaan ID ini ada
+            $penerimaan = DB::table('penerimaan')->find($id);
+
+            if (!$penerimaan) {
+                return back()->with('error', 'Data penerimaan tidak ditemukan.');
+            }
+
+            // Loop untuk insert detail baru
+            foreach ($request->items as $item) {
+                $subtotal = $item['jumlah_terima'] * $item['harga_satuan_terima'];
+
+                // ✅ Insert detail penerimaan
+                DB::table('detail_penerimaan')->insert([
+                    'idpenerimaan' => $id,
+                    'idbarang' => $item['idbarang'],
+                    'jumlah_terima' => $item['jumlah_terima'],
+                    'harga_satuan_terima' => $item['harga_satuan_terima'],
+                    'sub_total_terima' => $subtotal
+                ]);
+
+                // ✅ Update kartu stok
+                $stokAkhir = DB::table('kartu_stok')
+                    ->where('idbarang', $item['idbarang'])
+                    ->orderByDesc('idkartu_stok')
+                    ->value('stock') ?? 0;
+
+                $stokAkhir += $item['jumlah_terima'];
+
+                DB::table('kartu_stok')->insert([
+                    'jenis_transaksi' => 'M',
+                    'masuk' => $item['jumlah_terima'],
+                    'keluar' => 0,
+                    'stock' => $stokAkhir,
+                    'idtransaksi' => $id,
+                    'idbarang' => $item['idbarang'],
+                    'created_at' => now()
+                ]);
+            }
+
+            // ✅ Update status penerimaan berdasarkan kelengkapan
+            $this->updateStatusPenerimaan($penerimaan->idpengadaan);
+
+            DB::commit();
+
+            return redirect()
+                ->route('penerimaan.show', $id)
+                ->with('success', 'Detail penerimaan berhasil ditambahkan!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', "Kesalahan: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * ✅ Method untuk update status otomatis
+     */
     private function updateStatusPenerimaan($idPengadaan)
     {
         $data = DB::selectOne("
@@ -229,61 +305,6 @@ class PenerimaanController extends Controller
                 'message' => $e->getMessage(),
                 'line'    => $e->getLine()
             ], 500);
-        }
-    }
-
-    // ✅ Method baru untuk tambah detail penerimaan
-    public function addDetail(Request $request, $id)
-    {
-        $request->validate([
-            'items' => 'required|array|min:1'
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            foreach ($request->items as $item) {
-                $subtotal = $item['jumlah_terima'] * $item['harga_satuan_terima'];
-
-                DB::table('detail_penerimaan')->insert([
-                    'idpenerimaan' => $id,
-                    'idbarang' => $item['idbarang'],
-                    'jumlah_terima' => $item['jumlah_terima'],
-                    'harga_satuan_terima' => $item['harga_satuan_terima'],
-                    'sub_total_terima' => $subtotal
-                ]);
-
-                // Update kartu stok
-                $stokAkhir = DB::table('kartu_stok')
-                    ->where('idbarang', $item['idbarang'])
-                    ->orderByDesc('idkartu_stok')
-                    ->value('stock') ?? 0;
-
-                $stokAkhir += $item['jumlah_terima'];
-
-                DB::table('kartu_stok')->insert([
-                    'jenis_transaksi' => 'M',
-                    'masuk' => $item['jumlah_terima'],
-                    'keluar' => 0,
-                    'stock' => $stokAkhir,
-                    'idtransaksi' => $id,
-                    'idbarang' => $item['idbarang'],
-                    'created_at' => now()
-                ]);
-            }
-
-            // Update status
-            $penerimaan = DB::table('penerimaan')->find($id);
-            $this->updateStatusPenerimaan($penerimaan->idpengadaan);
-
-            DB::commit();
-
-            return redirect()
-                ->route('penerimaan.show', $id)
-                ->with('success', 'Detail penerimaan berhasil ditambahkan.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', "Kesalahan: " . $e->getMessage());
         }
     }
 }
