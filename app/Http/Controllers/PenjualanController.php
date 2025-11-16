@@ -11,7 +11,13 @@ class PenjualanController extends Controller
     public function index()
     {
         $margin = DB::table('margin_penjualan')->where('status', 1)->first();
-        $barang = DB::table('v_harga_jual_dengan_ppn')->get();
+
+        // ✅ PERBAIKAN: Ambil hanya barang yang stoknya > 0
+        $barang = DB::table('v_harga_jual_dengan_ppn')
+            ->where('stok_aktual', '>', 0) // Hanya barang dengan stok tersedia
+            ->orderBy('nama_barang', 'asc')
+            ->get();
+
         $penjualan = DB::table('penjualan')
             ->join('user', 'penjualan.iduser', '=', 'user.iduser')
             ->select('penjualan.*', 'user.username')
@@ -28,6 +34,18 @@ class PenjualanController extends Controller
 
             $idUser = Auth::id();
             $idMargin = DB::table('margin_penjualan')->where('status', 1)->value('idmargin_penjualan');
+
+            // ✅ Validasi stok sebelum menyimpan
+            foreach ($request->barang as $b) {
+                $stok = DB::table('v_harga_jual_dengan_ppn')
+                    ->where('idbarang', $b['idbarang'])
+                    ->value('stok_aktual');
+
+                if ($stok < $b['jumlah']) {
+                    DB::rollBack();
+                    return back()->with('error', "Stok tidak cukup untuk barang ID: {$b['idbarang']}. Stok tersedia: {$stok}");
+                }
+            }
 
             // Insert penjualan utama
             $idPenjualan = DB::table('penjualan')->insertGetId([

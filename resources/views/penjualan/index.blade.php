@@ -61,21 +61,21 @@
 
                 <div class="space-y-3">
                     {{-- Pilih Barang --}}
-                    <div>
-                        <label class="block text-sm font-medium">Pilih Barang</label>
-                        <select id="barangSelect" class="w-full border rounded px-2 py-1">
-                            <option value="">-- Pilih Barang --</option>
-                            @foreach($barang as $b)
-                                <option 
-                                    value="{{ $b->idbarang }}" 
-                                    data-nama="{{ $b->nama_barang }}"
-                                    data-harga="{{ $b->harga_jual_dengan_ppn }}"
-                                    data-stok="{{ $b->stok_aktual }}">
-                                    {{ $b->nama_barang }} (Stok: {{ $b->stok_aktual }}) - Rp {{ number_format($b->harga_jual_dengan_ppn, 0, ',', '.') }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+<div>
+    <label class="block text-sm font-medium">Pilih Barang</label>
+    <select id="barangSelect" class="w-full border rounded px-2 py-1">
+        <option value="">-- Pilih Barang --</option>
+        @foreach($barang as $b)
+            <option 
+                value="{{ $b->idbarang }}" 
+                data-nama="{{ $b->nama_barang }}"
+                data-harga="{{ $b->harga_jual_dengan_ppn }}"
+                data-stok="{{ $b->stok_aktual }}">
+                {{ $b->nama_barang }} (Stok: {{ $b->stok_aktual }}) - Rp {{ number_format($b->harga_jual_dengan_ppn, 0, ',', '.') }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
                     {{-- Input jumlah --}}
                     <div class="flex space-x-3">
@@ -141,8 +141,10 @@ function tambahItem() {
         alert("Pilih barang dan isi jumlah dengan benar!");
         return;
     }
+    
+    // ✅ Validasi stok
     if (jumlah > stok) {
-        alert("Jumlah melebihi stok yang tersedia!");
+        alert(`Stok tidak cukup! Stok tersedia: ${stok}`);
         return;
     }
 
