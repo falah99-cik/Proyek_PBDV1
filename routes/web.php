@@ -13,7 +13,6 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\JenisBarangController;
 use App\Http\Controllers\PenjualanController;
-use App\Http\Controllers\ReturController;
 
 Route::get('/', function () {
     return redirect('/dashboard');
@@ -74,18 +73,6 @@ Route::middleware(['auth', 'role:1,2'])->group(function () {
         ->name('margin_penjualan.activate');
     Route::put('margin_penjualan/{id}/toggle', [MarginPenjualanController::class, 'toggle'])
         ->name('margin_penjualan.toggle');
-
-    Route::prefix('retur')->group(function () {
-        Route::get('/', [ReturController::class, 'index'])->name('retur.index');
-        Route::post('/store', [ReturController::class, 'store'])->name('retur.store');
-        Route::get('/{id}', [ReturController::class, 'show'])->name('retur.show');
-        Route::put('/{id}/status', [ReturController::class, 'updateStatus'])->name('retur.updateStatus');
-        Route::delete('/{id}', [ReturController::class, 'destroy'])->name('retur.destroy');
-
-        // ✅ ROUTE UTAMA untuk ambil barang penerimaan
-        Route::get('/get-items-penerimaan/{idpenerimaan}', [ReturController::class, 'getItemsPenerimaan'])
-            ->name('retur.getItemsPenerimaan');
-    });
 });
 
 Route::middleware(['auth', 'role:1'])->group(function () {
@@ -101,6 +88,5 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/barang/{id}/info', [BarangController::class, 'getInfo']);
 Route::get('/penjualan/{id}/detail', [PenjualanController::class, 'getDetail']);
-Route::get('/retur/get-barang-penerimaan/{idpenerimaan}', [ReturController::class, 'getBarangPenerimaan']);
 
 require __DIR__ . '/auth.php';

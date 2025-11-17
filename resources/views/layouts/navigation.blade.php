@@ -75,7 +75,6 @@
                                     <x-dropdown-link :href="route('pengadaan.index')">Pengadaan</x-dropdown-link>
                                     <x-dropdown-link :href="route('penerimaan.index')">Penerimaan</x-dropdown-link>
                                         <x-dropdown-link href="{{ route('penjualan.index') }}">Penjualan</x-dropdown-link>
-                                        <x-dropdown-link href="{{ route('retur.index') }}">Retur</x-dropdown-link>
                                 </div>
                             </div>
                         @endif
